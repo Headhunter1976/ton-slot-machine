@@ -10,13 +10,13 @@ const PAYOUTS = {
     2: 2   // 2 takie same = x2
 };
 
-// WSPÓLNA baza danych dla wszystkich endpointów
+// Baza danych - tylko dla statystyk (saldo przechowywane w frontend)
 const gameDatabase = new Map();
 
 // Walidacja Telegram WebApp InitData
 function validateTelegramWebAppData(initData) {
-    if (!initData) {
-        return { id: 'test_user_' + Date.now() };
+    if (!initData || initData === 'guest_user' || initData.startsWith('demo_user_')) {
+        return { id: initData || 'guest_user' };
     }
     
     try {
@@ -46,7 +46,7 @@ function validateTelegramWebAppData(initData) {
         console.error('Telegram validation error:', error);
     }
     
-    return { id: 'test_user_' + Date.now() };
+    return { id: initData || 'guest_user' };
 }
 
 // Generowanie losowych symboli
@@ -73,6 +73,34 @@ function generateSpinResult() {
 async function sendWinnings(playerAddress, amount) {
     console.log(`💰 Symulacja wypłaty: ${amount / 1e9} TON do ${playerAddress}`);
     return true;
+}
+
+// Pobierz lub utwórz dane gracza
+function getPlayerData(userId, currentBalance, walletAddress) {
+    let playerData = gameDatabase.get(userId);
+    
+    if (!playerData) {
+        // Nowy gracz - utwórz dane
+        playerData = {
+            balance: currentBalance || 1000000000, // 1 TON startowy
+            totalPlayed: 0,
+            totalWon: 0,
+            walletAddress: walletAddress,
+            gamesCount: 0
+        };
+        gameDatabase.set(userId, playerData);
+        console.log(`👤 Nowy gracz: ${userId}, startowe saldo: ${(playerData.balance / 1e9).toFixed(2)} TON`);
+    } else {
+        // Istniejący gracz - aktualizuj saldo jeśli podane
+        if (currentBalance !== undefined && currentBalance !== null) {
+            playerData.balance = currentBalance;
+        }
+        if (walletAddress && walletAddress !== playerData.walletAddress) {
+            playerData.walletAddress = walletAddress;
+        }
+    }
+    
+    return playerData;
 }
 
 // GŁÓWNY HANDLER z routingiem
@@ -106,7 +134,7 @@ module.exports = async (req, res) => {
         
         // POST /api/balance
         if (path === '/api/balance' && method === 'POST') {
-            const { initData, walletAddress } = req.body;
+            const { initData, walletAddress, currentBalance } = req.body;
             const user = validateTelegramWebAppData(initData);
             
             if (!user || !user.id) {
@@ -114,25 +142,15 @@ module.exports = async (req, res) => {
             }
             
             const userId = user.id.toString();
-            const playerData = gameDatabase.get(userId) || { 
-                balance: 1000000000, // 1 TON startowy
-                totalPlayed: 0, 
-                totalWon: 0,
-                walletAddress: walletAddress
-            };
+            const playerData = getPlayerData(userId, currentBalance, walletAddress);
             
-            if (walletAddress && walletAddress !== playerData.walletAddress) {
-                playerData.walletAddress = walletAddress;
-                gameDatabase.set(userId, playerData);
-            }
-            
-            console.log(`👤 Użytkownik ${userId} - saldo: ${playerData.balance / 1e9} TON`);
+            console.log(`👤 Użytkownik ${userId} - saldo: ${(playerData.balance / 1e9).toFixed(2)} TON`);
             return res.json({ balance: playerData.balance });
         }
         
         // POST /api/spin
         if (path === '/api/spin' && method === 'POST') {
-            const { initData, walletAddress, betAmount } = req.body;
+            const { initData, walletAddress, betAmount, currentBalance } = req.body;
             const user = validateTelegramWebAppData(initData);
             
             if (!user || !user.id) {
@@ -140,14 +158,11 @@ module.exports = async (req, res) => {
             }
             
             const userId = user.id.toString();
-            const playerData = gameDatabase.get(userId) || { 
-                balance: 1000000000,
-                totalPlayed: 0, 
-                totalWon: 0,
-                walletAddress: walletAddress
-            };
             
-            if (betAmount > playerData.balance) {
+            // WAŻNE: Użyj currentBalance z frontend, nie z gameDatabase
+            let playerBalance = currentBalance || 1000000000;
+            
+            if (betAmount > playerBalance) {
                 return res.status(400).json({ error: 'Insufficient balance' });
             }
             
@@ -159,37 +174,42 @@ module.exports = async (req, res) => {
             const spinResult = generateSpinResult();
             const winAmount = spinResult.won ? betAmount * spinResult.multiplier : 0;
             
-            // Aktualizuj saldo W TEJ SAMEJ instancji gameDatabase!
-            playerData.balance -= betAmount;
+            // Oblicz nowe saldo
+            const newBalance = playerBalance - betAmount + winAmount;
+            
+            // Aktualizuj statystyki gracza
+            const playerData = getPlayerData(userId, newBalance, walletAddress);
             playerData.totalPlayed += betAmount;
+            playerData.gamesCount += 1;
             
             if (spinResult.won) {
-                playerData.balance += winAmount;
                 playerData.totalWon += winAmount;
                 
-                if (winAmount > 0 && playerData.walletAddress) {
-                    await sendWinnings(playerData.walletAddress, winAmount);
+                // Wyślij wygraną (symulacja)
+                if (winAmount > 0 && walletAddress) {
+                    await sendWinnings(walletAddress, winAmount);
                 }
             }
             
-            // WAŻNE: Zapisz zmodyfikowane dane
+            // Zapisz zaktualizowane dane
             gameDatabase.set(userId, playerData);
             
-            console.log(`🎰 Spin ${userId}: bet ${betAmount/1e9} TON, symbols: ${spinResult.symbols.join('')}, won: ${spinResult.won ? winAmount/1e9 + ' TON' : 'NO'}, newBalance: ${playerData.balance/1e9} TON`);
+            console.log(`🎰 Spin ${userId}: bet ${betAmount/1e9} TON, symbols: ${spinResult.symbols.join('')}, won: ${spinResult.won ? winAmount/1e9 + ' TON' : 'NO'}, newBalance: ${newBalance/1e9} TON`);
             
             return res.json({
                 success: true,
                 symbols: spinResult.symbols,
                 won: spinResult.won,
                 winAmount: winAmount,
-                newBalance: playerData.balance,
-                multiplier: spinResult.multiplier
+                newBalance: newBalance, // Zwracamy nowe saldo
+                multiplier: spinResult.multiplier,
+                currentGame: playerData.gamesCount
             });
         }
         
         // POST /api/history
         if (path === '/api/history' && method === 'POST') {
-            const { initData } = req.body;
+            const { initData, currentBalance } = req.body;
             const user = validateTelegramWebAppData(initData);
             
             if (!user || !user.id) {
@@ -197,17 +217,13 @@ module.exports = async (req, res) => {
             }
             
             const userId = user.id.toString();
-            const playerData = gameDatabase.get(userId) || { 
-                balance: 1000000000,
-                totalPlayed: 0, 
-                totalWon: 0 
-            };
+            const playerData = getPlayerData(userId, currentBalance, null);
             
             return res.json({
-                totalPlayed: playerData.totalPlayed,
-                totalWon: playerData.totalWon,
-                balance: playerData.balance,
-                gamesCount: Math.floor(playerData.totalPlayed / 100000000)
+                totalPlayed: playerData.totalPlayed || 0,
+                totalWon: playerData.totalWon || 0,
+                balance: currentBalance || playerData.balance || 0,
+                gamesCount: playerData.gamesCount || 0
             });
         }
         

@@ -9,6 +9,7 @@ class SlotMachine {
         
         this.initTelegram();
         this.initEventListeners();
+        this.loadSavedBalance(); // Wczytaj zapisane saldo
         this.updateBalance();
         
         console.log('🎰 TON Slot Machine initialized!');
@@ -33,6 +34,9 @@ class SlotMachine {
             if (window.Telegram.WebApp.initDataUnsafe?.user?.id) {
                 this.userId = 'tg_user_' + window.Telegram.WebApp.initDataUnsafe.user.id;
                 console.log('🆔 Using Telegram User ID:', this.userId);
+            } else if (window.Telegram.WebApp.initData) {
+                this.userId = 'tg_hash_' + window.Telegram.WebApp.initData.substring(0, 16);
+                console.log('🆔 Using Telegram initData hash:', this.userId);
             }
         } else {
             console.log('🌐 Running in browser (not Telegram)');
@@ -56,6 +60,29 @@ class SlotMachine {
             if (value < 0.01) e.target.value = 0.01;
             if (value > 10) e.target.value = 10;
         });
+    }
+
+    loadSavedBalance() {
+        // Wczytaj zapisane saldo z localStorage
+        try {
+            const savedBalance = localStorage.getItem('tonSlotBalance');
+            if (savedBalance) {
+                this.balance = parseInt(savedBalance);
+                console.log(`💾 Loaded saved balance: ${(this.balance / 1e9).toFixed(2)} TON`);
+            }
+        } catch (error) {
+            console.log('No saved balance found');
+        }
+    }
+
+    saveBalance() {
+        // Zapisz saldo do localStorage
+        try {
+            localStorage.setItem('tonSlotBalance', this.balance.toString());
+            console.log(`💾 Saved balance: ${(this.balance / 1e9).toFixed(2)} TON`);
+        } catch (error) {
+            console.error('Failed to save balance:', error);
+        }
     }
 
     connectWallet() {
@@ -92,6 +119,14 @@ class SlotMachine {
     }
 
     async updateBalance() {
+        // Jeśli mamy zapisane saldo i jesteśmy połączeni, użyj go
+        if (this.balance > 0 && this.connected) {
+            document.getElementById('balance').textContent = 
+                `${(this.balance / 1e9).toFixed(2)} TON`;
+            console.log(`💰 Using cached balance: ${(this.balance / 1e9).toFixed(2)} TON`);
+            return;
+        }
+
         try {
             const response = await fetch(`${this.backendUrl}/balance`, {
                 method: 'POST',
@@ -99,8 +134,9 @@ class SlotMachine {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    initData: this.userId || 'guest_user', // Użyj stałego ID
-                    walletAddress: this.walletAddress
+                    initData: this.userId || 'guest_user',
+                    walletAddress: this.walletAddress,
+                    currentBalance: this.balance // Przekaż aktualne saldo
                 })
             });
             
@@ -109,7 +145,14 @@ class SlotMachine {
             }
             
             const data = await response.json();
-            this.balance = data.balance || 0;
+            
+            // Użyj większego z dwóch sald (backend vs cached)
+            const backendBalance = data.balance || 0;
+            if (backendBalance > this.balance) {
+                this.balance = backendBalance;
+                this.saveBalance();
+            }
+            
             document.getElementById('balance').textContent = 
                 `${(this.balance / 1e9).toFixed(2)} TON`;
             
@@ -153,9 +196,10 @@ class SlotMachine {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    initData: this.userId || 'guest_user', // Użyj stałego ID
+                    initData: this.userId || 'guest_user',
                     walletAddress: this.walletAddress,
-                    betAmount: betNanotons
+                    betAmount: betNanotons,
+                    currentBalance: this.balance // WAŻNE: Przekaż aktualne saldo
                 })
             });
             
@@ -250,6 +294,7 @@ class SlotMachine {
 
         // WAŻNE: Aktualizuj saldo bezpośrednio z wyniku spin
         this.balance = result.newBalance;
+        this.saveBalance(); // Zapisz nowe saldo
         document.getElementById('balance').textContent = 
             `${(this.balance / 1e9).toFixed(2)} TON`;
         
@@ -278,7 +323,8 @@ class SlotMachine {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        initData: this.userId || 'guest_user' // Użyj stałego ID
+                        initData: this.userId || 'guest_user',
+                        currentBalance: this.balance // Przekaż aktualne saldo
                     })
                 });
                 
@@ -340,5 +386,10 @@ window.debugSlot = {
     testSpin: () => window.slotMachine?.spin(),
     connectWallet: () => window.slotMachine?.connectWallet(),
     testBackend: () => window.slotMachine?.testBackend(),
-    getUserId: () => window.slotMachine?.userId
+    getUserId: () => window.slotMachine?.userId,
+    resetBalance: () => {
+        localStorage.removeItem('tonSlotBalance');
+        window.slotMachine.balance = 0;
+        window.slotMachine.updateBalance();
+    }
 };
