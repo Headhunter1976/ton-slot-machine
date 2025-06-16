@@ -4,7 +4,7 @@ class SlotMachine {
         this.balance = 0;
         this.connected = false;
         this.walletAddress = null;
-        this.backendUrl = ''; // Używa tego samego domeny co frontend
+        this.backendUrl = '/api'; // Używa tego samego domeny co frontend
         
         this.initTelegram();
         this.initEventListeners();

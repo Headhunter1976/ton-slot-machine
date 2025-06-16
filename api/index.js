@@ -93,7 +93,7 @@ export default async function handler(req, res) {
     
     try {
         // API Routes
-        if (path === '/api/test' && method === 'GET') {
+        if (path === '/test' && method === 'GET') {
             return res.json({ 
                 message: 'TON Slot Machine Backend działa!', 
                 timestamp: new Date().toISOString(),
@@ -101,7 +101,7 @@ export default async function handler(req, res) {
             });
         }
         
-        if (path === '/api/balance' && method === 'POST') {
+        if (path === '/balance' && method === 'POST') {
             const { initData, walletAddress } = body;
             const user = validateTelegramWebAppData(initData);
             
@@ -126,7 +126,7 @@ export default async function handler(req, res) {
             return res.json({ balance: playerData.balance });
         }
         
-        if (path === '/api/spin' && method === 'POST') {
+        if (path === '/spin' && method === 'POST') {
             const { initData, walletAddress, betAmount } = body;
             const user = validateTelegramWebAppData(initData);
             
@@ -181,7 +181,7 @@ export default async function handler(req, res) {
             });
         }
         
-        if (path === '/api/history' && method === 'POST') {
+        if (path === '/history' && method === 'POST') {
             const { initData } = body;
             const user = validateTelegramWebAppData(initData);
             
