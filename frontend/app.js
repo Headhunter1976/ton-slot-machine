@@ -4,7 +4,7 @@ class SlotMachine {
         this.balance = 0;
         this.connected = false;
         this.walletAddress = null;
-        this.backendUrl = '/api'; // Używa tego samego domeny co frontend
+        this.backendUrl = ''; // Używa tego samego domeny co frontend
         
         this.initTelegram();
         this.initEventListeners();
@@ -80,7 +80,7 @@ class SlotMachine {
 
     async updateBalance() {
         try {
-            const response = await fetch(`${this.backendUrl}/api/balance`, {
+            const response = await fetch(`${this.backendUrl}/balance`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -134,7 +134,7 @@ class SlotMachine {
         this.animateReels();
         
         try {
-            const response = await fetch(`${this.backendUrl}/api/spin`, {
+            const response = await fetch(`${this.backendUrl}/spin`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -256,7 +256,7 @@ class SlotMachine {
         if (statsInfo.style.display === 'none') {
             // Pobierz statystyki
             try {
-                const response = await fetch(`${this.backendUrl}/api/history`, {
+                const response = await fetch(`${this.backendUrl}/history`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -289,7 +289,7 @@ class SlotMachine {
     // Test funkcja dla debugowania
     async testBackend() {
         try {
-            const response = await fetch(`${this.backendUrl}/api/test`);
+            const response = await fetch(`${this.backendUrl}/test`);
             const data = await response.json();
             console.log('🧪 Backend test:', data);
             return data;
