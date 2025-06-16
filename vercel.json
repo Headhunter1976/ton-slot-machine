@@ -1,0 +1,20 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/test",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/api/balance",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/api/spin",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/api/history",
+      "destination": "/api/index"
+    }
+  ]
+}
