@@ -183,10 +183,7 @@ class SlotMachine {
         document.getElementById('resultMessage').textContent = '';
         document.getElementById('winAmount').textContent = '';
         
-        // Pokaż loading
-        this.showLoading(true);
-        
-        // Animacja spinowania
+        // Animacja spinowania bębnów (bez loading overlay)
         this.animateReels();
         
         try {
@@ -213,14 +210,12 @@ class SlotMachine {
                 // Czekaj na zakończenie animacji przed pokazaniem wyniku
                 setTimeout(() => {
                     this.showResult(result);
-                    this.showLoading(false);
                 }, 1500);
             } else {
                 throw new Error(result.error || 'Błąd gry');
             }
         } catch (error) {
             console.error('🎰 Spin error:', error);
-            this.showLoading(false);
             alert('❌ Błąd podczas gry: ' + error.message);
             document.getElementById('spinButton').disabled = false;
         }
@@ -307,11 +302,6 @@ class SlotMachine {
         setTimeout(() => {
             document.getElementById('spinButton').disabled = false;
         }, 1000);
-    }
-
-    showLoading(show) {
-        const overlay = document.getElementById('loadingOverlay');
-        overlay.style.display = show ? 'flex' : 'none';
     }
 
     async updateStats() {
