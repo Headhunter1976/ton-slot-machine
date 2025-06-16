@@ -4,7 +4,8 @@ class SlotMachine {
         this.balance = 0;
         this.connected = false;
         this.walletAddress = null;
-        this.backendUrl = '/api'; // Używa tego samego domeny co frontend
+        this.userId = null; // Stały user ID dla sesji
+        this.backendUrl = '/api'; // Backend URL
         
         this.initTelegram();
         this.initEventListeners();
@@ -27,6 +28,12 @@ class SlotMachine {
             
             console.log('📱 Telegram WebApp detected');
             console.log('Init data:', window.Telegram.WebApp.initData);
+            
+            // Użyj prawdziwego Telegram ID jeśli dostępne
+            if (window.Telegram.WebApp.initDataUnsafe?.user?.id) {
+                this.userId = 'tg_user_' + window.Telegram.WebApp.initDataUnsafe.user.id;
+                console.log('🆔 Using Telegram User ID:', this.userId);
+            }
         } else {
             console.log('🌐 Running in browser (not Telegram)');
         }
@@ -55,6 +62,12 @@ class SlotMachine {
         // Demo połączenia portfela (później prawdziwy TON Connect)
         this.connected = true;
         this.walletAddress = 'EQDemo_' + Math.random().toString(36).substr(2, 8);
+        
+        // Ustaw stały user ID dla tej sesji (jeśli nie ma z Telegram)
+        if (!this.userId) {
+            this.userId = 'demo_user_' + Date.now();
+            console.log('🆔 Generated demo User ID:', this.userId);
+        }
         
         document.getElementById('connectWallet').style.display = 'none';
         document.getElementById('walletInfo').style.display = 'block';
@@ -86,7 +99,7 @@ class SlotMachine {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    initData: window.Telegram?.WebApp?.initData || '',
+                    initData: this.userId || 'guest_user', // Użyj stałego ID
                     walletAddress: this.walletAddress
                 })
             });
@@ -140,7 +153,7 @@ class SlotMachine {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    initData: window.Telegram?.WebApp?.initData || '',
+                    initData: this.userId || 'guest_user', // Użyj stałego ID
                     walletAddress: this.walletAddress,
                     betAmount: betNanotons
                 })
@@ -235,9 +248,12 @@ class SlotMachine {
             }
         }
 
-        // Aktualizuj saldo
+        // WAŻNE: Aktualizuj saldo bezpośrednio z wyniku spin
         this.balance = result.newBalance;
-        this.updateBalance();
+        document.getElementById('balance').textContent = 
+            `${(this.balance / 1e9).toFixed(2)} TON`;
+        
+        console.log(`💰 Saldo zaktualizowane do: ${(this.balance / 1e9).toFixed(2)} TON`);
         
         // Odblokuj przycisk
         setTimeout(() => {
@@ -262,7 +278,7 @@ class SlotMachine {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        initData: window.Telegram?.WebApp?.initData || ''
+                        initData: this.userId || 'guest_user' // Użyj stałego ID
                     })
                 });
                 
@@ -313,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('✅ Backend connection successful');
         } else {
             console.log('❌ Backend connection failed');
-            alert('⚠️ Nie można połączyć z serwerem gry.\nSprawdź czy backend działa na porcie 3000.');
+            alert('⚠️ Nie można połączyć z serwerem gry.\nSprawdź połączenie internetowe.');
         }
     });
 });
@@ -323,5 +339,6 @@ window.debugSlot = {
     getBalance: () => window.slotMachine?.balance,
     testSpin: () => window.slotMachine?.spin(),
     connectWallet: () => window.slotMachine?.connectWallet(),
-    testBackend: () => window.slotMachine?.testBackend()
+    testBackend: () => window.slotMachine?.testBackend(),
+    getUserId: () => window.slotMachine?.userId
 };
