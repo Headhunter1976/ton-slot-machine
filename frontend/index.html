@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎰 TON Slot Machine</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app">
+        <header>
+            <h1>🎰 TON Slot Machine</h1>
+            <div class="balance">
+                <span id="balance">0.00 TON</span>
+            </div>
+        </header>
+
+        <div class="wallet-section">
+            <button id="connectWallet" class="connect-btn">
+                🔗 Połącz Portfel (Demo)
+            </button>
+            <div id="walletInfo" class="wallet-info" style="display: none;">
+                <span>🟢 Połączony: <span id="walletAddress">EQC...</span></span>
+                <button id="disconnectWallet" class="disconnect-btn">❌</button>
+            </div>
+        </div>
+
+        <main class="game-container">
+            <div class="slot-machine">
+                <div class="reels">
+                    <div class="reel" id="reel1">
+                        <div class="symbol">🍒</div>
+                    </div>
+                    <div class="reel" id="reel2">
+                        <div class="symbol">🍋</div>
+                    </div>
+                    <div class="reel" id="reel3">
+                        <div class="symbol">🍊</div>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <div class="bet-section">
+                        <label>Stawka:</label>
+                        <input type="number" id="betAmount" value="0.1" min="0.01" step="0.01" max="10">
+                        <span>TON</span>
+                    </div>
+                    
+                    <button id="spinButton" class="spin-btn" disabled>
+                        🎰 SPIN
+                    </button>
+                </div>
+            </div>
+
+            <div class="result-section">
+                <div id="resultMessage"></div>
+                <div id="winAmount"></div>
+            </div>
+
+            <div class="game-rules">
+                <h3>🎮 Zasady gry</h3>
+                <div class="rules">
+                    <div>🍒🍒🍒 = x10 stawki</div>
+                    <div>🍋🍋 = x2 stawki</div>
+                    <div>Min. stawka: 0.01 TON</div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <div class="stats-section">
+                <button id="showStats" class="stats-btn">
+                    📊 Statystyki
+                </button>
+                <div id="statsInfo" class="stats-info" style="display: none;">
+                    <div>Zagrane: <span id="totalPlayed">0 TON</span></div>
+                    <div>Wygrane: <span id="totalWon">0 TON</span></div>
+                    <div>Gier: <span id="gamesCount">0</span></div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">🎰</div>
+        <div>Spinowanie...</div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
