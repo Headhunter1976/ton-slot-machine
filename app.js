@@ -300,6 +300,9 @@ class SlotMachine {
         
         console.log(`💰 Saldo zaktualizowane do: ${(this.balance / 1e9).toFixed(2)} TON`);
         
+        // AUTO-UPDATE STATYSTYK
+        this.updateStats();
+        
         // Odblokuj przycisk
         setTimeout(() => {
             document.getElementById('spinButton').disabled = false;
@@ -309,6 +312,40 @@ class SlotMachine {
     showLoading(show) {
         const overlay = document.getElementById('loadingOverlay');
         overlay.style.display = show ? 'flex' : 'none';
+    }
+
+    async updateStats() {
+        // Sprawdź czy panel statystyk jest otwarty
+        const statsInfo = document.getElementById('statsInfo');
+        if (statsInfo.style.display !== 'block') {
+            return; // Panel zamknięty, nie aktualizuj
+        }
+
+        try {
+            const response = await fetch(`${this.backendUrl}/history`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    initData: this.userId || 'guest_user',
+                    currentBalance: this.balance
+                })
+            });
+            
+            if (response.ok) {
+                const stats = await response.json();
+                document.getElementById('totalPlayed').textContent = 
+                    `${(stats.totalPlayed / 1e9).toFixed(2)} TON`;
+                document.getElementById('totalWon').textContent = 
+                    `${(stats.totalWon / 1e9).toFixed(2)} TON`;
+                document.getElementById('gamesCount').textContent = stats.gamesCount || 0;
+                
+                console.log('📊 Stats updated:', stats);
+            }
+        } catch (error) {
+            console.error('Stats update error:', error);
+        }
     }
 
     async toggleStats() {
